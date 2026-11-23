@@ -1,44 +1,72 @@
 import { useState } from "react";
-import AuthLayout from "./AuthLayout";
+import type { FormEvent } from "react";
+import { getUsers, hashPassword, saveUsers } from "../storage";
+import { btnPrimary, card, errorText, field, label } from "../ui";
 
-export default function Register() {
-  const [form, setForm] = useState({
-    name: "", email: "", password: "", confirmPassword: "",
-  });
+interface Props {
+  onSuccess: (email: string) => void;
+  onSwitch: () => void;
+}
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+export default function Register({ onSuccess, onSwitch }: Props) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (form.password !== form.confirmPassword) {
-      alert("Passwords do not match");
-      return;
-    }
-    console.log(form);
-  };
+    const key = email.trim().toLowerCase();
+    if (!name.trim()) return setError("Enter your name.");
+    if (!/^\S+@\S+\.\S+$/.test(key)) return setError("Enter a valid email address.");
+    if (password.length < 6) return setError("Use a password with at least 6 characters.");
+    if (password !== confirm) return setError("The passwords don’t match.");
 
-  const fields = [
-    { name: "name", label: "Full Name", type: "text" },
-    { name: "email", label: "Email", type: "email" },
-    { name: "password", label: "Password", type: "password" },
-    { name: "confirmPassword", label: "Confirm Password", type: "password" },
-  ] as const;
+    const users = getUsers();
+    if (users[key]) return setError("An account with this email already exists. Log in instead.");
+
+    users[key] = { name: name.trim(), hash: await hashPassword(password) };
+    saveUsers(users);
+    onSuccess(key);
+  }
 
   return (
-    <AuthLayout title="Register">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {fields.map((f) => (
-          <div key={f.name}>
-            <label className="block text-sm font-medium mb-1">{f.label}</label>
-            <input type={f.type} name={f.name} value={form[f.name]} onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2" required />
-          </div>
-        ))}
-        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">
-          Register
-        </button>
+    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4">
+      <h1 className="mb-1 text-3xl font-bold tracking-tight">Create an account</h1>
+      <p className="mb-6 text-slate-500 dark:text-slate-400">Sign up to start managing your tasks.</p>
+      <form onSubmit={handleSubmit} noValidate className={card}>
+        <div className="mb-3">
+          <label htmlFor="r-name" className={label}>Name</label>
+          <input id="r-name" type="text" autoComplete="name" className={field}
+            value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="mb-3">
+          <label htmlFor="r-email" className={label}>Email</label>
+          <input id="r-email" type="email" autoComplete="email" className={field}
+            value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div className="mb-3">
+          <label htmlFor="r-pass" className={label}>
+            Password <span className="font-normal text-slate-500">(at least 6 characters)</span>
+          </label>
+          <input id="r-pass" type="password" autoComplete="new-password" className={field}
+            value={password} onChange={(e) => setPassword(e.target.value)} />
+        </div>
+        <div className="mb-3">
+          <label htmlFor="r-pass2" className={label}>Confirm password</label>
+          <input id="r-pass2" type="password" autoComplete="new-password" className={field}
+            value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+        </div>
+        <p role="alert" className={`mb-2 ${errorText}`}>{error}</p>
+        <button type="submit" className={`${btnPrimary} w-full`}>Create account</button>
       </form>
-    </AuthLayout>
+      <p className="mt-4 text-center text-sm">
+        Already registered?{" "}
+        <button onClick={onSwitch} className="font-medium text-teal-700 underline dark:text-teal-300">
+          Log in
+        </button>
+      </p>
+    </main>
   );
 }

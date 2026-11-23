@@ -1,17 +1,36 @@
 import { useState } from "react";
 import Login from "./components/Login";
 import Register from "./components/Register";
+import Dashboard from "./components/Dashboard";
+import { clearSession, getSession, getUsers, setSession } from "./storage";
 
 export default function App() {
-  const [showLogin, setShowLogin] = useState(true);
+  const [email, setEmail] = useState<string | null>(() => {
+    const s = getSession();
+    return s && getUsers()[s] ? s : null;
+  });
+  const [view, setView] = useState<"login" | "register">("login");
+
+  function handleAuth(userEmail: string) {
+    setSession(userEmail);
+    setEmail(userEmail);
+  }
+
+  function handleLogout() {
+    clearSession();
+    setEmail(null);
+    setView("login");
+  }
 
   return (
-    <>
-      {showLogin ? <Login /> : <Register />}
-      <button onClick={() => setShowLogin(!showLogin)}
-        className="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg">
-        Switch to {showLogin ? "Register" : "Login"}
-      </button>
-    </>
+    <div className="min-h-screen bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
+      {email ? (
+        <Dashboard email={email} onLogout={handleLogout} />
+      ) : view === "login" ? (
+        <Login onSuccess={handleAuth} onSwitch={() => setView("register")} />
+      ) : (
+        <Register onSuccess={handleAuth} onSwitch={() => setView("login")} />
+      )}
+    </div>
   );
 }
